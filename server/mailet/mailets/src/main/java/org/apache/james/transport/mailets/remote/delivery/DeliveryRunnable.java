@@ -26,6 +26,8 @@ import java.time.Duration;
 import java.util.Date;
 import java.util.function.Supplier;
 
+import javax.mail.MessagingException;
+
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.lifecycle.api.LifecycleUtil;
 import org.apache.james.metrics.api.Metric;
@@ -176,7 +178,13 @@ public class DeliveryRunnable implements Disposable {
             reAttemptDelivery(mail, retries);
         } else {
             LOGGER.debug("Bouncing message {} after {} retries", mail.getName(), retries);
-            bouncer.bounce(mail, new Exception("Too many retries failure. Bouncing after " + retries + " retries.", executionResult.getException().orElse(null)));
+
+            bouncer.bounce(mail, new Exception("Too many retries failure. Bouncing after " + retries + " retries.\n" + executionResult.getException().map(e -> {
+                 if (e instanceof MessagingException) {
+                      return e.getMessage() + "\n" + ((MessagingException) e).getNextException().getMessage();
+                 }
+                 return e.getMessage();
+             }).orElse(""), executionResult.getException().orElse(null)));
         }
     }
 
